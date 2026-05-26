@@ -1,0 +1,35 @@
+{
+  "name": "kcctd-reportgen",
+  "version": "0.1.0",
+  "description": "Kobe Kosen experiment report generator CLI.",
+  "type": "module",
+  "bin": {
+    "kdrg": "./bin/kdrg.js"
+  },
+  "files": [
+    "bin/",
+    "dist/src/",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepare": "npm run build",
+    "test": "npm run build && node --test \"dist/test/**/*.test.js\"",
+    "kdrg": "node ./bin/kdrg.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "katex": "^0.16.22",
+    "markdown-it": "^14.1.0",
+    "mermaid": "^11.6.0",
+    "pdf-lib": "^1.17.1",
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "@types/markdown-it": "^14.1.2",
+    "@types/node": "^25.9.1",
+    "typescript": "^6.0.3"
+  }
+}

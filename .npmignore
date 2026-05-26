@@ -1,0 +1,7 @@
+node_modules/
+reports/
+kdrg.config.json
+test/
+src/
+tsconfig.json
+*.log

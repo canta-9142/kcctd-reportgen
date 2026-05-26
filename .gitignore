@@ -1,0 +1,5 @@
+node_modules/
+dist/
+kdrg.config.json
+/reports/
+*.log
