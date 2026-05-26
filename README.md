@@ -1,28 +1,36 @@
-# KDRG
+# KDRG (Kcct-D Report Generator)
 
-KDRG (`kdrg`) is a small Node.js CLI for generating experiment reports.
+KDRG (`kdrg`) は神戸高専電子工学科の実験レポートをMarkdownからPDFに自動生成するCLIツールです。
 
-The MVP flow is:
+バージョン0.1.0では以下の機能をサポートしています:
 
-1. Save personal defaults with `kdrg config`
-2. Create a report folder with `kdrg init`
-3. Write the body in `reports/<year>_<themeId>/index.md`
-4. Export a PDF with `kdrg export <folder-name>`
+1. `kdrg config`コマンドでプロジェクトの基本情報を設定
+2. `kdrg init`コマンドでレポートのテンプレートを生成
+3. `reports/<year>_<themeId>/index.md`に本文を記述
+4. `kdrg export <folder-name>`コマンドでPDFを生成
 
 ## Install
 
-From this repository:
+### Node.jsのインストール
+
+KDRGはNode.jsで動作します。<a href="https://nodejs.org/" target="_blank">公式サイト</a>からLTS版をインストールするか、以下のコマンドを実行してください:
 
 ```sh
-npm install
-npm run build
-npm link
+# Debian/Ubuntu
+curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -
+sudo apt-get install -y nodejs
+
+# macOS (Homebrew)
+brew install node
+
+# Windows (Winget)
+winget install OpenJS.NodeJS.LTS
 ```
 
 From GitHub:
 
 ```sh
-npm install -g github:<user>/<repo>
+npm install -g canta-9142/kcctd-reportgen
 ```
 
 If Playwright has not installed Chromium yet, run:
