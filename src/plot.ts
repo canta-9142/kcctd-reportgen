@@ -15,6 +15,9 @@ export type PlotAxis = {
   label: string;
   unit: string;
   log: boolean;
+  start?: number;
+  end?: number;
+  interval?: number;
 };
 
 export type PlotRow = {
@@ -42,7 +45,7 @@ export function parsePlotBlock(content: string, warnings: string[] = []): PlotBl
     rows: [],
   };
 
-  parseMeta(metaText, plot);
+  parseMeta(metaText, plot, warnings);
   plot.rows = parseCsv(csvText, warnings);
   return plot;
 }
@@ -74,7 +77,7 @@ function splitPlotContent(content: string): { metaText: string; csvText: string 
   };
 }
 
-function parseMeta(metaText: string, plot: PlotBlock): void {
+function parseMeta(metaText: string, plot: PlotBlock, warnings: string[]): void {
   let currentAxis: PlotAxisName | "" = "";
   for (const rawLine of metaText.split(/\r?\n/)) {
     const line = rawLine.replace(/\s+#.*$/, "");
@@ -105,6 +108,13 @@ function parseMeta(metaText: string, plot: PlotBlock): void {
         plot[currentAxis].unit = cleanValue(value);
       } else if (key === "log") {
         plot[currentAxis].log = parseBoolean(value);
+      } else if (key === "start" || key === "end" || key === "interval") {
+        const parsed = parseOptionalNumber(value);
+        if (parsed === undefined) {
+          warnings.push(`Plot axis "${currentAxis}.${key}" was ignored because it is not numeric.`);
+          continue;
+        }
+        plot[currentAxis][key] = parsed;
       }
     }
   }
@@ -120,14 +130,18 @@ function parseCsv(csvText: string, warnings: string[]): PlotRow[] {
     return [];
   }
 
-  const header = lines[0].replace(/\s+/g, "").toLowerCase();
+  const header = trimTrailingCsvCommas(lines[0] ?? "")
+    .replace(/\s+/g, "")
+    .toLowerCase();
   if (header !== "x,y") {
     warnings.push('Plot CSV should start with "x,y".');
   }
 
   const rows: PlotRow[] = [];
   for (const [index, line] of lines.slice(1).entries()) {
-    const [xText, yText] = line.split(",").map((value) => value.trim());
+    const [xText, yText] = trimTrailingCsvCommas(line)
+      .split(",")
+      .map((value) => value.trim());
     const x = Number(xText);
     const y = Number(yText);
     if (!Number.isFinite(x) || !Number.isFinite(y)) {
@@ -139,14 +153,18 @@ function parseCsv(csvText: string, warnings: string[]): PlotRow[] {
   return rows;
 }
 
+function trimTrailingCsvCommas(line: string): string {
+  return line.replace(/,+\s*$/, "");
+}
+
 function renderPlotSvg(plot: PlotBlock): string {
   const width = DEFAULT_WIDTH;
   const height = DEFAULT_HEIGHT;
   const innerWidth = width - MARGIN.left - MARGIN.right;
   const innerHeight = height - MARGIN.top - MARGIN.bottom;
   const rows = filterRowsForScale(plot.rows, plot);
-  const xDomain = makeDomain(rows.map((row) => row.x), plot.x.log);
-  const yDomain = makeDomain(rows.map((row) => row.y), plot.y.log);
+  const xDomain = makeDomain(rows.map((row) => row.x), plot.x);
+  const yDomain = makeDomain(rows.map((row) => row.y), plot.y);
   const xScale = makeScale(xDomain, MARGIN.left, MARGIN.left + innerWidth, plot.x.log);
   const yScale = makeScale(yDomain, MARGIN.top + innerHeight, MARGIN.top, plot.y.log);
 
@@ -156,8 +174,8 @@ function renderPlotSvg(plot: PlotBlock): string {
   }));
 
   const polyline = points.map((point) => `${round(point.x)},${round(point.y)}`).join(" ");
-  const xTicks = makeTicks(xDomain, plot.x.log);
-  const yTicks = makeTicks(yDomain, plot.y.log);
+  const xTicks = makeTicks(xDomain, plot.x);
+  const yTicks = makeTicks(yDomain, plot.y);
 
   return `<svg class="kdrg-plot-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(
     plot.caption || "plot",
@@ -202,22 +220,35 @@ function filterRowsForScale(rows: PlotRow[], plot: PlotBlock): PlotRow[] {
   return rows.filter((row) => (!plot.x.log || row.x > 0) && (!plot.y.log || row.y > 0));
 }
 
-function makeDomain(values: number[], logScale: boolean): [number, number] {
+function makeDomain(values: number[], axis: PlotAxis): [number, number] {
+  const logScale = axis.log;
   const finite = values.filter((value) => Number.isFinite(value) && (!logScale || value > 0));
-  if (finite.length === 0) {
+  const autoDomain = makeAutoDomain(finite, logScale);
+  let start = isUsableAxisBound(axis.start, logScale) ? axis.start : autoDomain[0];
+  let end = isUsableAxisBound(axis.end, logScale) ? axis.end : autoDomain[1];
+
+  if (start === end) {
+    if (logScale) {
+      start /= 10;
+      end *= 10;
+    } else {
+      start -= 1;
+      end += 1;
+    }
+  }
+
+  return [start, end];
+}
+
+function makeAutoDomain(values: number[], logScale: boolean): [number, number] {
+  if (values.length === 0) {
     return logScale ? [1, 10] : [0, 1];
   }
 
-  let min = Math.min(...finite);
-  let max = Math.max(...finite);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
   if (min === max) {
-    if (logScale) {
-      min /= 10;
-      max *= 10;
-    } else {
-      min -= 1;
-      max += 1;
-    }
+    return logScale ? [min / 10, max * 10] : [min - 1, max + 1];
   }
 
   if (logScale) {
@@ -225,9 +256,7 @@ function makeDomain(values: number[], logScale: boolean): [number, number] {
   }
 
   const padding = (max - min) * 0.08 || 1;
-  const lower = min >= 0 ? 0 : min - padding;
-  const upper = max <= 0 ? 0 : max + padding;
-  return [lower, upper];
+  return [min >= 0 ? 0 : min - padding, max <= 0 ? 0 : max + padding];
 }
 
 function makeScale(
@@ -244,8 +273,12 @@ function makeScale(
   };
 }
 
-function makeTicks(domain: [number, number], logScale: boolean): number[] {
-  if (logScale) {
+function makeTicks(domain: [number, number], axis: PlotAxis): number[] {
+  if (axis.interval !== undefined && Number.isFinite(axis.interval) && axis.interval > 0) {
+    return makeIntervalTicks(domain, axis.interval);
+  }
+
+  if (axis.log) {
     const start = Math.floor(Math.log10(domain[0]));
     const end = Math.ceil(Math.log10(domain[1]));
     return Array.from({ length: end - start + 1 }, (_value, index) => 10 ** (start + index));
@@ -254,6 +287,27 @@ function makeTicks(domain: [number, number], logScale: boolean): number[] {
   const count = 5;
   const step = (domain[1] - domain[0]) / (count - 1 || 1);
   return Array.from({ length: count }, (_value, index) => domain[0] + step * index);
+}
+
+function makeIntervalTicks(domain: [number, number], interval: number): number[] {
+  const [start, end] = domain;
+  const direction = end >= start ? 1 : -1;
+  const step = interval * direction;
+  const epsilon = interval * 1e-9;
+  const ticks: number[] = [];
+
+  for (
+    let current = start;
+    direction > 0 ? current <= end + epsilon : current >= end - epsilon;
+    current += step
+  ) {
+    ticks.push(roundTick(current));
+    if (ticks.length >= 1000) {
+      break;
+    }
+  }
+
+  return ticks;
 }
 
 function formatTick(value: number): string {
@@ -273,6 +327,19 @@ function cleanValue(value: string): string {
 
 function parseBoolean(value: string): boolean {
   return /^(true|1|yes|on)$/i.test(cleanValue(value));
+}
+
+function parseOptionalNumber(value: string): number | undefined {
+  const parsed = Number(cleanValue(value));
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function isUsableAxisBound(value: number | undefined, logScale: boolean): value is number {
+  return value !== undefined && Number.isFinite(value) && (!logScale || value > 0);
+}
+
+function roundTick(value: number): number {
+  return Number(value.toPrecision(12));
 }
 
 function round(value: number): number {

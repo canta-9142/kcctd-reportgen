@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { prepareMarkdown, renderMarkdown } from "../src/markdown.js";
+import { parsePlotBlock, renderPlot } from "../src/plot.js";
 
 test("numbers headings and keeps references unnumbered", () => {
   const result = prepareMarkdown(`# 目的
@@ -50,6 +51,56 @@ x,y
   assert.match(result.markdown, /図1に結果を示す。/);
   assert.match(result.markdown, /<figure class="kdrg-plot"/);
   assert.match(result.markdown, /<figcaption>図1 I-V特性<\/figcaption>/);
+});
+
+test("accepts trailing commas in plot CSV header and rows", () => {
+  const warnings: string[] = [];
+  const plot = parsePlotBlock(`---
+x,y,
+0,0,
+1,0.02,
+`, warnings);
+
+  assert.deepEqual(plot.rows, [
+    { x: 0, y: 0 },
+    { x: 1, y: 0.02 },
+  ]);
+  assert.deepEqual(warnings, []);
+});
+
+test("supports plot axis start, end, and interval settings", () => {
+  const warnings: string[] = [];
+  const plot = parsePlotBlock(`x:
+  label: 電圧
+  unit: V
+  start: 0
+  end: 4
+  interval: 2
+y:
+  label: 電流
+  unit: A
+  start: 0
+  end: 0.04
+  interval: 0.02
+---
+x,y
+0,0
+2,0.02
+4,0.04
+`, warnings);
+  const html = renderPlot(plot);
+
+  assert.equal(plot.x.start, 0);
+  assert.equal(plot.x.end, 4);
+  assert.equal(plot.x.interval, 2);
+  assert.equal(plot.y.start, 0);
+  assert.equal(plot.y.end, 0.04);
+  assert.equal(plot.y.interval, 0.02);
+  assert.match(html, />0<\/text>/);
+  assert.match(html, />2<\/text>/);
+  assert.match(html, />4<\/text>/);
+  assert.match(html, />0.02<\/text>/);
+  assert.deepEqual(warnings, []);
 });
 
 test("renders inline and block math with KaTeX", () => {

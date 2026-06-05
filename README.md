@@ -17,18 +17,8 @@ KDRG (`kdrg`) は、神戸高専電子工学科の実験報告書を Markdown �
 
 ## インストール
 
-このリポジトリを手元で使う場合:
-
 ```sh
-npm install
-npm run build
-npm link
-```
-
-GitHub から直接インストールする場合:
-
-```sh
-npm install -g github:canta-9142/kcctd-reportgen
+npm install github:canta-9142/kcctd-reportgen
 ```
 
 Playwright の Chromium が未導入の場合は、以下も実行してください。
@@ -239,15 +229,21 @@ x:
   label: 電圧
   unit: V
   log: false
+  start: 0
+  end: 2
+  interval: 1
 y:
   label: 電流
   unit: A
   log: false
+  start: 0
+  end: 0.04
+  interval: 0.02
 ---
-x,y
-0,0
-1,0.02
-2,0.04
+x,y,
+0,0,
+1,0.02,
+2,0.04,
 ```
 ````
 
@@ -261,7 +257,12 @@ x,y
 label: 電圧
 unit: V
 log: false
+start: 0
+end: 2
+interval: 1
 ```
+
+`start` は原点側の値、`end` は原点と反対側の値、`interval` は目盛り間隔です。省略した場合は自動で決定されます。
 
 CSV データは必ず次のヘッダーから始めます。
 
@@ -317,7 +318,3 @@ npm test
 実行ファイル [bin/kdrg.js](bin/kdrg.js) は、ビルド済みの `dist/src/cli.js` を読み込みます。
 
 GitHub から直接 npm install された場合は、npm の `prepare` スクリプトにより TypeScript がビルドされます。
-
-## ライセンス
-
-MIT
