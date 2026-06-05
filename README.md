@@ -1,58 +1,92 @@
 # KDRG (Kcct-D Report Generator)
 
-KDRG (`kdrg`) は神戸高専電子工学科の実験レポートをMarkdownからPDFに自動生成するCLIツールです。
+KDRG (`kdrg`) は、神戸高専電子工学科の実験報告書を Markdown から PDF に生成する CLI ツールです。
 
-バージョン0.1.0では以下の機能をサポートしています:
+表紙情報は `report.json` に保存し、本文は `index.md` に書きます。`kdrg export` を実行すると、表紙つきの PDF が `output/` に出力されます。
 
-1. `kdrg config`コマンドでプロジェクトの基本情報を設定
-2. `kdrg init`コマンドでレポートのテンプレートを生成
-3. `reports/<year>_<themeId>/index.md`に本文を記述
-4. `kdrg export <folder-name>`コマンドでPDFを生成
+## 主な機能
 
-## Install
+- 指定形式に近い表紙の自動生成
+- Markdown 本文から PDF を生成
+- 見出し番号の自動付与
+- 図表番号と本文中参照の自動解決
+- `plot` コードブロックによる簡易グラフ生成
+- Mermaid 図のレンダリング
+- KaTeX による TeX 数式レンダリング
+- 本文ページ番号を表紙の次から開始
 
-### Node.jsのインストール
+## インストール
 
-KDRGはNode.jsで動作します。<a href="https://nodejs.org/" target="_blank">公式サイト</a>からLTS版をインストールするか、以下のコマンドを実行してください:
-
-```sh
-# Debian/Ubuntu
-curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo bash -
-sudo apt-get install -y nodejs
-
-# macOS (Homebrew)
-brew install node
-
-# Windows (Winget)
-winget install OpenJS.NodeJS.LTS
-```
-
-From GitHub:
+このリポジトリを手元で使う場合:
 
 ```sh
-npm install -g canta-9142/kcctd-reportgen
+npm install
+npm run build
+npm link
 ```
 
-If Playwright has not installed Chromium yet, run:
+GitHub から直接インストールする場合:
+
+```sh
+npm install -g github:canta-9142/kcctd-reportgen
+```
+
+Playwright の Chromium が未導入の場合は、以下も実行してください。
 
 ```sh
 npx playwright install chromium
 ```
 
-## Development
+## 使い方
 
-KDRG is written in TypeScript and compiled to `dist/`.
+最初に、プロジェクトルートで個人情報を設定します。
 
 ```sh
-npm run build
-npm test
+kdrg config
 ```
 
-The executable at `bin/kdrg.js` loads the compiled entrypoint from `dist/src/cli.js`.
+これにより `kdrg.config.json` が作成または更新されます。
 
-When installed directly from GitHub, npm runs the `prepare` script and builds the TypeScript sources before packing the executable package.
+```json
+{
+  "grade": "1",
+  "studentNumber": "12",
+  "name": "山田太郎"
+}
+```
 
-## File Layout
+次に、レポートを作成します。
+
+```sh
+kdrg init
+```
+
+対話形式でレポート情報を入力すると、以下のファイルが生成されます。
+
+```text
+reports/<年>_<テーマ番号>/report.json
+reports/<年>_<テーマ番号>/index.md
+```
+
+本文は `index.md` に書きます。
+
+PDF を出力するには、レポートフォルダ名を指定して `export` を実行します。
+
+```sh
+kdrg export 2026_T1A1
+```
+
+この場合、`reports/2026_T1A1/index.md` が変換されます。
+
+絶対パスも指定できます。
+
+```sh
+kdrg export C:\path\to\reports\2026_T1A1
+```
+
+## ファイル構成
+
+標準的な構成は以下です。
 
 ```text
 project-root/
@@ -65,73 +99,49 @@ project-root/
         2026_T1A1_山田太郎.pdf
 ```
 
-Report folders are named:
+レポートフォルダ名は次の形式です。
 
 ```text
-<year>_<themeId>
+<年>_<テーマ番号>
 ```
 
-PDF files are written to the report folder's `output/` directory:
+出力される PDF ファイル名は次の形式です。
 
 ```text
-<year>_<themeId>_<name>.pdf
+<年>_<テーマ番号>_<名前>.pdf
 ```
 
-Intermediate HTML is deleted by default.
+PDF は、`index.md` があるフォルダから見て `./output/` の中に出力されます。
 
-## Commands
+中間 HTML はデフォルトでは削除されます。
 
-```sh
-kdrg config
-```
-
-Creates or updates `kdrg.config.json` in the project root.
-
-```json
-{
-  "grade": "1",
-  "studentNumber": "12",
-  "name": "山田太郎"
-}
-```
-
-```sh
-kdrg init
-```
-
-Prompts for report metadata, then creates:
-
-```text
-reports/<year>_<themeId>/report.json
-reports/<year>_<themeId>/index.md
-```
-
-```sh
-kdrg export 2026_T1A1
-```
-
-Exports `reports/2026_T1A1/index.md`.
-
-Absolute paths are also allowed:
-
-```sh
-kdrg export C:\path\to\reports\2026_T1A1
-```
-
-Options:
+## `export` のオプション
 
 ```sh
 kdrg export 2026_T1A1 --keep-html
+```
+
+`--keep-html` を指定すると、`output/` に以下の中間ファイルを残します。
+
+```text
+cover.html
+body.html
+compiled.md
+```
+
+```sh
 kdrg export 2026_T1A1 --no-index-sync
 ```
 
-`--keep-html` keeps `cover.html`, `body.html`, and `compiled.md` in `output/`.
+デフォルトでは、`export` 時に `report.json` の内容を `index.md` 先頭の自動生成メタデータブロックへ同期します。
 
-By default, export syncs the current `report.json` into a generated metadata block at the top of `index.md`. Use `--no-index-sync` to skip that write.
+`--no-index-sync` を指定すると、この同期を行いません。
 
-If `report.json.submittedOn` is empty, export fills it with the export date. `resubmittedOn` is always kept empty by the program.
+`report.json` の `submittedOn` が空欄の場合、`export` 実行日で自動入力されます。`resubmittedOn` はプログラム側では常に空欄として扱います。
 
 ## `report.json`
+
+`report.json` には、表紙に出力する情報を保存します。
 
 ```json
 {
@@ -152,9 +162,11 @@ If `report.json.submittedOn` is empty, export fills it with the export date. `re
 }
 ```
 
-## Markdown Body
+`grade`、`studentNumber`、`name` は `kdrg config` の内容を初期値として使います。
 
-Write headings without manual numbers:
+## Markdown 本文
+
+本文は `index.md` に書きます。見出し番号は自動生成されるため、手入力しません。
 
 ```md
 # 目的
@@ -172,35 +184,52 @@ Write headings without manual numbers:
 # 参考文献
 ```
 
-Heading numbers are generated during export. `参考文献` is not numbered.
+出力時には、次のように番号が付与されます。
 
-## Captions and References
+```text
+1. 目的
+2. 原理
+3. 実験機器
+...
+```
 
-Declare figure and table captions with HTML comments:
+`参考文献` には章番号を付けません。
+
+## 図表キャプションと参照
+
+図表キャプションは HTML コメントで宣言します。
 
 ```md
 <!-- graph: a1: I-V特性 -->
 <!-- table: parts: 使用器具一覧 -->
 ```
 
-They render as:
+PDF では次のように出力されます。
 
 ```text
 図1 I-V特性
 表1 使用器具一覧
 ```
 
-Reference them in text with `${var}`:
+本文中では `${変数名}` で参照できます。
 
 ```md
 ${a1}に測定結果を示す。
 ```
 
-Undefined references are left as-is and reported as warnings.
+出力時には次のようになります。
 
-## Plot Blocks
+```text
+図1に測定結果を示す。
+```
 
-Use a `plot` code fence. Metadata and CSV are separated by `---`.
+未定義の参照はエラーにせず、警告を出して元の文字列を残します。
+
+## Plot ブロック
+
+グラフは `plot` コードブロックで記述できます。
+
+メタ情報と CSV データは `---` で区切ります。
 
 ````md
 ```plot
@@ -222,22 +251,73 @@ x,y
 ```
 ````
 
-`caption`, `var`, `x`, and `y` are optional. If both `caption` and `var` are present, the plot is registered as a graph and a figure number is added below the plot.
+`caption` と `var` が両方ある場合、その plot は図として登録され、下部に図番号つきキャプションが追加されます。
 
-CSV data must start with:
+`caption`、`var`、`x`、`y` は省略できます。
+
+軸設定では以下を指定できます。
+
+```yaml
+label: 電圧
+unit: V
+log: false
+```
+
+CSV データは必ず次のヘッダーから始めます。
 
 ```csv
 x,y
 ```
 
-MVP supports one `x` series and one `y` series.
+MVP では、`x` と `y` の 2 系列のみ対応しています。
 
-## Supported Rendering
+## Mermaid
 
-- A4 portrait PDF
-- Cover page based on `report.json`
-- Body page numbers starting after the cover
-- Mermaid code fences
-- TeX math via KaTeX
-- Markdown tables
-- Plot blocks
+Mermaid は通常のコードフェンスで記述できます。
+
+````md
+```mermaid
+graph LR
+  A --> B
+```
+````
+
+```mermaid
+graph LR
+  A --> B
+```
+
+## TeX 数式
+
+インライン数式:
+
+```md
+抵抗値は $R = \frac{V}{I}$ で求められる。
+```
+
+独立数式:
+
+```md
+$$
+f_0 = \frac{1}{2\pi\sqrt{LC}}
+$$
+```
+
+数式レンダリングには KaTeX を使用します。
+
+## 開発
+
+KDRG は TypeScript で実装しています。ソースは `src/` にあり、ビルド結果は `dist/` に出力されます。
+
+```sh
+npm run build
+npm test
+```
+
+実行ファイル [bin/kdrg.js](bin/kdrg.js) は、ビルド済みの `dist/src/cli.js` を読み込みます。
+
+GitHub から直接 npm install された場合は、npm の `prepare` スクリプトにより TypeScript がビルドされます。
+
+## ライセンス
+
+MIT
