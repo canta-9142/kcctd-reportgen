@@ -1,7 +1,7 @@
 {
   "name": "kcctd-reportgen",
   "version": "0.1.0",
-  "description": "Kobe Kosen experiment report generator CLI.",
+  "description": "KCCT-D Report Generator CLI.",
   "type": "module",
   "bin": {
     "kdrg": "./bin/kdrg.js"
@@ -11,6 +11,15 @@
     "dist/src/",
     "README.md"
   ],
+  "author": "Kanta IMAI <r123304@g.kobe-kosen.ac.jp> (https://github.com/canta-9142)",
+  "license": "MIT",
+  "repository": {
+    "url": "https://github.com/canta-9142/kcctd-reportgen"
+  },
+  "bugs": {
+    "url": "https://github.com/canta-9142/kcctd-reportgen/issues",
+    "email": "contact@floating-gate.com"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepare": "npm run build",
