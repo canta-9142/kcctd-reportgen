@@ -2,6 +2,13 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { prepareMarkdown, renderMarkdown } from "../src/markdown.js";
 import { parsePlotBlock, renderPlot } from "../src/plot.js";
+import {
+  createReportFolderName,
+  extractReportBlock,
+  formatDisplayDate,
+  resolveResubmittedOn,
+  syncReportBlock,
+} from "../src/files.js";
 
 test("numbers headings and keeps references unnumbered", () => {
   const result = prepareMarkdown(`# 目的
@@ -14,6 +21,51 @@ test("numbers headings and keeps references unnumbered", () => {
   assert.match(result.markdown, /# 1\. 目的/);
   assert.match(result.markdown, /## 1\.1\. 詳細/);
   assert.match(result.markdown, /# 参考文献/);
+});
+
+test("uses the experiment start year and month in report folder names", () => {
+  assert.equal(createReportFolderName("2026-06-05", "T1A1"), "2026-06-T1A1");
+  assert.throws(() => createReportFolderName("2026-02-30", "T1A1"), /Invalid experiment start date/);
+});
+
+test("formats report dates with Japanese year, month, and day markers", () => {
+  assert.equal(formatDisplayDate("2026-06-05"), "2026年6月5日");
+  assert.equal(formatDisplayDate(""), "");
+});
+
+test("prefers index.md resubmission date and synchronizes the report block", () => {
+  const source = `<!-- kdrg-report:start
+{
+  "resubmittedOn": "2026-06-12"
+}
+kdrg-report:end -->
+
+# 目的
+`;
+  const indexReport = extractReportBlock(source);
+  const resolved = resolveResubmittedOn(indexReport, { resubmittedOn: "2026-06-11" });
+  const synced = syncReportBlock(source, { ...indexReport, resubmittedOn: resolved });
+
+  assert.equal(resolved, "2026-06-12");
+  assert.match(synced, /"resubmittedOn": "2026-06-12"/);
+});
+
+test("uses report.json resubmission date when index.md is empty", () => {
+  assert.equal(
+    resolveResubmittedOn({ resubmittedOn: "" }, { resubmittedOn: "2026-06-11" }),
+    "2026-06-11",
+  );
+});
+
+test("rejects an invalid resubmission date during export reconciliation", () => {
+  assert.throws(
+    () => resolveResubmittedOn({ resubmittedOn: "2026/06/12" }, {}),
+    /Use YYYY-MM-DD/,
+  );
+  assert.throws(
+    () => resolveResubmittedOn(undefined, { resubmittedOn: "2026-02-30" }),
+    /Use YYYY-MM-DD/,
+  );
 });
 
 test("renders caption comments and variable references", () => {

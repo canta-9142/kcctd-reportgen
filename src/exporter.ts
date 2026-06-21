@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { chromium, type Browser, type Page } from "playwright";
 import { PDFDocument } from "pdf-lib";
 import { prepareMarkdown, renderMarkdown } from "./markdown.js";
+import { formatDisplayDate } from "./files.js";
 import type { Report } from "./cli.js";
 
 const require = createRequire(import.meta.url);
@@ -124,7 +125,7 @@ function buildCoverHtml(report: Report): string {
       color: #111;
     }
     .cover-title {
-      font-family: var(--font-gothic);
+      font-family: var(--font-heading);
       font-size: 22pt;
       font-weight: 700;
       text-align: center;
@@ -167,7 +168,7 @@ function buildCoverHtml(report: Report): string {
       padding-top: 3mm;
     }
     .comment-title {
-      font-family: var(--font-gothic);
+      font-family: var(--font-heading);
       font-size: 11pt;
       margin-bottom: 2mm;
     }
@@ -180,10 +181,10 @@ function buildCoverHtml(report: Report): string {
       <tbody>
         ${coverRow("実験題目", report.title)}
         ${coverRow("担当教員", report.teacher)}
-        ${coverRow("実験開始日", report.startedOn)}
-        ${coverRow("実験終了日", report.endedOn)}
-        ${coverRow("提出日", report.submittedOn)}
-        ${coverRow("再提出日", "")}
+        ${coverRow("実験開始日", formatDisplayDate(report.startedOn))}
+        ${coverRow("実験終了日", formatDisplayDate(report.endedOn))}
+        ${coverRow("提出日", formatDisplayDate(report.submittedOn))}
+        ${coverRow("再提出日", formatDisplayDate(report.resubmittedOn))}
         ${coverRow("学年", report.grade, "cover-spacer")}
         ${coverRow("出席番号", report.studentNumber)}
         ${coverRow("実験班", report.group)}
@@ -220,7 +221,7 @@ function buildBodyHtml(content: string): string {
       margin: 0;
     }
     h1, h2, h3, h4, h5, h6 {
-      font-family: var(--font-gothic);
+      font-family: var(--font-heading);
       line-height: 1.35;
       break-after: avoid;
       margin: 1.2em 0 0.55em;
@@ -228,26 +229,36 @@ function buildBodyHtml(content: string): string {
     h1 { font-size: 15pt; }
     h2 { font-size: 13pt; }
     h3 { font-size: 11.5pt; }
-    p {
+    main > p {
       text-indent: 1em;
       margin: 0.45em 0;
+    }
+    main > p.kdrg-math-block {
+      text-indent: 0;
+    }
+    li > p,
+    blockquote > p {
+      text-indent: 0;
     }
     table {
       width: 100%;
       border-collapse: collapse;
+      border-top: 2px solid #111;
+      border-bottom: 1px solid #333;
       margin: 0.2em 0 1.2em;
       font-size: 9.5pt;
     }
     th, td {
-      border-top: 1px solid #333;
-      border-bottom: 1px solid #777;
-      border-left: 0;
-      border-right: 0;
+      border: 0;
       padding: 0.35em 0.5em;
     }
+    th + th,
+    td + td {
+      border-left: 1px solid #777;
+    }
     th {
-      font-family: var(--font-gothic);
-      border-top: 2px solid #111;
+      font-family: var(--font-heading);
+      border-bottom: 1px solid #333;
       text-align: left;
     }
     pre {
@@ -255,13 +266,19 @@ function buildBodyHtml(content: string): string {
       padding: 0.8em;
       white-space: pre-wrap;
       break-inside: avoid;
-      font-family: Consolas, "Courier New", monospace;
+      font-family: var(--font-code);
+      font-variant-ligatures: common-ligatures contextual;
+      font-feature-settings: "liga" 1, "calt" 1;
       font-size: 9pt;
       line-height: 1.45;
     }
     code {
-      font-family: Consolas, "Courier New", monospace;
+      font-family: var(--font-code);
       font-size: 0.95em;
+    }
+    pre code {
+      font-variant-ligatures: inherit;
+      font-feature-settings: inherit;
     }
     figure {
       margin: 1.1em auto 1.4em;
@@ -270,7 +287,7 @@ function buildBodyHtml(content: string): string {
     }
     figcaption,
     .kdrg-caption {
-      font-family: var(--font-gothic);
+      font-family: var(--font-heading);
       font-size: 9.5pt;
       text-align: center;
       margin: 0.45em 0 1em;
@@ -307,7 +324,7 @@ function buildBodyHtml(content: string): string {
       stroke-width: 2;
     }
     .kdrg-plot-svg text {
-      font-family: var(--font-gothic);
+      font-family: var(--font-heading);
       fill: #111;
     }
     .kdrg-plot-svg .tick-label {
@@ -348,11 +365,12 @@ function coverRow(label: string, value: unknown, rowClass = "", cellClass = ""):
 function baseStyles(): string {
   return `
     :root {
-      --font-mincho: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "MS Mincho", serif;
-      --font-gothic: "Yu Gothic", "YuGothic", "Hiragino Kaku Gothic ProN", "Meiryo", sans-serif;
+      --font-body: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "MS Mincho", serif;
+      --font-heading: "Noto Sans JP", "Yu Gothic", "YuGothic", "Meiryo", sans-serif;
+      --font-code: "Cascadia Code", "Cascadia Mono", Consolas, "Courier New", monospace;
     }
     * { box-sizing: border-box; }
-    body { font-family: var(--font-mincho); }
+    body { font-family: var(--font-body); }
   `;
 }
 
