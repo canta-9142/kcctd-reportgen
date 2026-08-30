@@ -58,13 +58,31 @@ export async function resolveReportDir(projectRoot: string, folderArg: string): 
   return standard;
 }
 
-export function createReportBlock(report: Report): string {
+export function createReportBlock(report: Partial<Report>): string {
   return `<!-- kdrg-report:start
 ${JSON.stringify(report, null, 2)}
 kdrg-report:end -->`;
 }
 
-export function syncReportBlock(source: string, report: Report): string {
+export function extractReportBlock(source: string): Partial<Report> | undefined {
+  const match = /<!--\s*kdrg-report:start\s*([\s\S]*?)\s*kdrg-report:end\s*-->/.exec(source);
+  if (!match) {
+    return undefined;
+  }
+
+  try {
+    const parsed = JSON.parse(match[1] ?? "") as unknown;
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("metadata must be a JSON object");
+    }
+    return parsed as Partial<Report>;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Failed to parse the kdrg report block in index.md: ${message}`);
+  }
+}
+
+export function syncReportBlock(source: string, report: Partial<Report>): string {
   const block = createReportBlock(report);
   const pattern = /<!--\s*kdrg-report:start[\s\S]*?kdrg-report:end\s*-->\s*/;
   if (pattern.test(source)) {
@@ -84,11 +102,73 @@ export function formatDate(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+export function formatDisplayDate(value: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    return value;
+  }
+
+  return `${Number(match[1])}年${Number(match[2])}月${Number(match[3])}日`;
+}
+
+export function resolveResubmittedOn(
+  indexReport: Partial<Report> | undefined,
+  jsonReport: Partial<Report>,
+): string {
+  const indexValue = normalizeOptionalDateValue(indexReport?.resubmittedOn, "index.md");
+  const jsonValue = normalizeOptionalDateValue(jsonReport.resubmittedOn, "report.json");
+  const resolved = indexValue || jsonValue;
+
+  if (resolved && !isValidIsoDate(resolved)) {
+    throw new Error(
+      `Invalid resubmittedOn "${resolved}". Use YYYY-MM-DD in index.md or report.json.`,
+    );
+  }
+
+  return resolved;
+}
+
+export function createReportFolderName(startedOn: string, themeId: string): string {
+  if (!isValidIsoDate(startedOn)) {
+    throw new Error(`Invalid experiment start date "${startedOn}". Use YYYY-MM-DD.`);
+  }
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(startedOn)!;
+  return `${match[1]}-${match[2]}-${themeId}`;
+}
+
 export function sanitizeFilePart(value: unknown): string {
   return String(value ?? "")
     .trim()
     .replace(/[<>:"/\\|?*\u0000-\u001F]/g, "_")
     .replace(/\s+/g, "");
+}
+
+function normalizeOptionalDateValue(value: unknown, source: string): string {
+  if (value === undefined || value === null || value === "") {
+    return "";
+  }
+  if (typeof value !== "string") {
+    throw new Error(`Invalid resubmittedOn in ${source}. Use a YYYY-MM-DD string.`);
+  }
+  return value.trim();
+}
+
+function isValidIsoDate(value: string): boolean {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    return false;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return (
+    date.getUTCFullYear() === year &&
+    date.getUTCMonth() === month - 1 &&
+    date.getUTCDate() === day
+  );
 }
 
 async function exists(filePath: string): Promise<boolean> {

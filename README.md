@@ -54,8 +54,8 @@ kdrg init
 対話形式でレポート情報を入力すると、以下のファイルが生成されます。
 
 ```text
-reports/<年>_<テーマ番号>/report.json
-reports/<年>_<テーマ番号>/index.md
+reports/<実験開始年>-<実験開始月>-<テーマ番号>/report.json
+reports/<実験開始年>-<実験開始月>-<テーマ番号>/index.md
 ```
 
 本文は `index.md` に書きます。
@@ -63,15 +63,15 @@ reports/<年>_<テーマ番号>/index.md
 PDF を出力するには、レポートフォルダ名を指定して `export` を実行します。
 
 ```sh
-kdrg export 2026_T1A1
+kdrg export 2026-06-T1A1
 ```
 
-この場合、`reports/2026_T1A1/index.md` が変換されます。
+この場合、`reports/2026-06-T1A1/index.md` が変換されます。
 
 絶対パスも指定できます。
 
 ```sh
-kdrg export C:\path\to\reports\2026_T1A1
+kdrg export C:\path\to\reports\2026-06-T1A1
 ```
 
 ## ファイル構成
@@ -82,7 +82,7 @@ kdrg export C:\path\to\reports\2026_T1A1
 project-root/
   kdrg.config.json
   reports/
-    2026_T1A1/
+    2026-06-T1A1/
       report.json
       index.md
       output/
@@ -92,8 +92,10 @@ project-root/
 レポートフォルダ名は次の形式です。
 
 ```text
-<年>_<テーマ番号>
+<実験開始年>-<実験開始月>-<テーマ番号>
 ```
+
+例えば、実験開始日が `2026-06-05`、テーマ番号が `T1A1` の場合は `2026-06-T1A1` になります。年と月は `kdrg init` で入力した実験開始日から自動取得されます。
 
 出力される PDF ファイル名は次の形式です。
 
@@ -108,7 +110,7 @@ PDF は、`index.md` があるフォルダから見て `./output/` の中に出�
 ## `export` のオプション
 
 ```sh
-kdrg export 2026_T1A1 --keep-html
+kdrg export 2026-06-T1A1 --keep-html
 ```
 
 `--keep-html` を指定すると、`output/` に以下の中間ファイルを残します。
@@ -120,14 +122,18 @@ compiled.md
 ```
 
 ```sh
-kdrg export 2026_T1A1 --no-index-sync
+kdrg export 2026-06-T1A1 --no-index-sync
 ```
 
 デフォルトでは、`export` 時に `report.json` の内容を `index.md` 先頭の自動生成メタデータブロックへ同期します。
 
 `--no-index-sync` を指定すると、この同期を行いません。
 
-`report.json` の `submittedOn` が空欄の場合、`export` 実行日で自動入力されます。`resubmittedOn` はプログラム側では常に空欄として扱います。
+`report.json` の `submittedOn` が空欄の場合、`export` 実行日で自動入力されます。
+
+再提出日は `report.json` または `index.md` 先頭の自動生成メタデータブロックに、`resubmittedOn` として入力できます。片方だけに値がある場合は両方へ同期し、両方に値がある場合は `index.md` の値を優先します。値は実在する日付を `YYYY-MM-DD` 形式で記述する必要があり、形式が不正な場合は `export` がエラーになります。
+
+日付は `report.json` では `YYYY-MM-DD` 形式で保存し、PDF 表紙では `2026年6月5日` の形式で表示します。
 
 ## `report.json`
 
@@ -158,6 +164,10 @@ kdrg export 2026_T1A1 --no-index-sync
 
 本文は `index.md` に書きます。見出し番号は自動生成されるため、手入力しません。
 
+通常の本文段落は、PDF 出力時に段落先頭が自動で一字下げされます。Markdown 側で全角空白を追加する必要はありません。
+
+PDF では、見出しに `Noto Sans JP`、本文に游明朝、コードに `Cascadia Code` を使用します。コードブロックではリガチャを有効にします。フォントが環境にない場合は、設定された代替フォントへフォールバックします。
+
 ```md
 # 目的
 
@@ -184,6 +194,8 @@ kdrg export 2026_T1A1 --no-index-sync
 ```
 
 `参考文献` には章番号を付けません。
+
+Markdown 標準の表は、電子工学科の指定様式に合わせて出力されます。最上部は太線、横線はヘッダと内容の区切りおよび内容の終端だけに入り、縦線は列同士の区切りだけに入ります。
 
 ## 図表キャプションと参照
 

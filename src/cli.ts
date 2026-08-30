@@ -5,10 +5,13 @@ import { createInterface, type Interface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { exportReport } from "./exporter.js";
 import {
+  createReportFolderName,
   createReportBlock,
+  extractReportBlock,
   findProjectRoot,
   formatDate,
   readJsonIfExists,
+  resolveResubmittedOn,
   resolveReportDir,
   sanitizeFilePart,
   syncReportBlock,
@@ -99,15 +102,16 @@ async function runInit(args: string[]): Promise<void> {
   const rl = createInterface({ input, output });
   try {
     const now = new Date();
-    const year = Number(await ask(rl, "年", String(now.getFullYear())));
     const themeId = await askRequired(rl, "テーマ番号 (例: T1A1)");
     const title = await ask(rl, "実験題目", "");
     const teacher = await ask(rl, "担当教員", "");
-    const startedOn = await ask(rl, "実験開始日 (YYYY-MM-DD)", formatDate(now));
+    const startedOn = await askExperimentStartDate(rl, formatDate(now));
     const endedOn = await ask(rl, "実験終了日 (YYYY-MM-DD)", startedOn);
     const group = await ask(rl, "実験班", "");
     const partnersText = await ask(rl, "共同実験者名 (カンマ区切り)", "");
     const comments = await ask(rl, "コメント欄", "");
+    const reportFolderName = createReportFolderName(startedOn, themeId);
+    const year = Number(startedOn.slice(0, 4));
 
     const report: Report = {
       year,
@@ -126,7 +130,7 @@ async function runInit(args: string[]): Promise<void> {
       comments,
     };
 
-    const reportDir = path.join(projectRoot, "reports", `${year}_${themeId}`);
+    const reportDir = path.join(projectRoot, "reports", reportFolderName);
     await ensureNewDirectory(reportDir, options.force);
 
     const reportJsonPath = path.join(reportDir, "report.json");
@@ -158,15 +162,19 @@ async function runExport(args: string[]): Promise<void> {
   if (!report) {
     throw new Error(`report.json not found: ${reportJsonPath}`);
   }
+  const indexSource = await readFile(indexPath, "utf8");
+  const indexReport = extractReportBlock(indexSource);
+  const resubmittedOn = resolveResubmittedOn(indexReport, report);
 
   const today = formatDate(new Date());
-  const updatedReport = normalizeReport(report, config, today);
+  const updatedReport = normalizeReport(report, config, today, resubmittedOn);
   await writeFile(reportJsonPath, `${JSON.stringify(updatedReport, null, 2)}\n`, "utf8");
 
-  if (options.indexSync !== false) {
-    const source = await readFile(indexPath, "utf8");
-    await writeFile(indexPath, syncReportBlock(source, updatedReport), "utf8");
-  }
+  const indexReportToWrite =
+    options.indexSync !== false
+      ? updatedReport
+      : { ...(indexReport ?? updatedReport), resubmittedOn };
+  await writeFile(indexPath, syncReportBlock(indexSource, indexReportToWrite), "utf8");
 
   const outputDir = path.join(reportDir, "output");
   await mkdir(outputDir, { recursive: true });
@@ -187,7 +195,12 @@ async function runExport(args: string[]): Promise<void> {
   console.log(`Exported ${path.relative(projectRoot, outputPath)}`);
 }
 
-function normalizeReport(report: Partial<Report>, config: UserConfig, today: string): Report {
+function normalizeReport(
+  report: Partial<Report>,
+  config: UserConfig,
+  today: string,
+  resubmittedOn: string,
+): Report {
   return {
     year: report.year ?? new Date().getFullYear(),
     themeId: report.themeId ?? "",
@@ -196,7 +209,7 @@ function normalizeReport(report: Partial<Report>, config: UserConfig, today: str
     startedOn: report.startedOn ?? "",
     endedOn: report.endedOn ?? "",
     submittedOn: report.submittedOn || today,
-    resubmittedOn: "",
+    resubmittedOn,
     grade: report.grade || config.grade || "",
     studentNumber: report.studentNumber || config.studentNumber || "",
     group: report.group ?? "",
@@ -241,6 +254,18 @@ async function askRequired(rl: Interface, label: string, defaultValue = ""): Pro
       return answer;
     }
     console.log("必須項目です。");
+  }
+}
+
+async function askExperimentStartDate(rl: Interface, defaultValue: string): Promise<string> {
+  while (true) {
+    const answer = await ask(rl, "実験開始日 (YYYY-MM-DD)", defaultValue);
+    try {
+      createReportFolderName(answer, "T");
+      return answer;
+    } catch {
+      console.log("実在する日付を YYYY-MM-DD 形式で入力してください。");
+    }
   }
 }
 
@@ -299,8 +324,8 @@ Usage:
   kdrg export <folder-name-or-absolute-path> [--keep-html] [--no-index-sync]
 
 Examples:
-  kdrg export 2026_T1A1
-  kdrg export C:\\path\\to\\reports\\2026_T1A1 --keep-html
+  kdrg export 2026-06-T1A1
+  kdrg export C:\\path\\to\\reports\\2026-06-T1A1 --keep-html
 `);
 }
 
