@@ -252,6 +252,9 @@ function buildBodyHtml(content: string): string {
       margin: 0.2em 0 1.2em;
       font-size: 9.5pt;
     }
+    thead {
+      display: table-row-group;
+    }
     th, td {
       border: 0;
       padding: 0.35em 0.5em;
