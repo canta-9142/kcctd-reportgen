@@ -1,6 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 import { chromium, type Browser, type Page } from "playwright";
 import { PDFDocument } from "pdf-lib";
 import { prepareMarkdown, renderMarkdown } from "./markdown.js";
@@ -28,7 +29,10 @@ export async function exportReport({
 }: ExportReportOptions): Promise<void> {
   const source = await readFile(indexPath, "utf8");
   const prepared = prepareMarkdown(source);
-  const bodyContent = renderMarkdown(prepared.markdown);
+  const bodyContent = renderMarkdown(
+    prepared.markdown,
+    pathToFileURL(`${path.dirname(indexPath)}${path.sep}`).href,
+  );
   const coverHtml = buildCoverHtml(report);
   const bodyHtml = buildBodyHtml(bodyContent);
   const outputDir = path.dirname(outputPath);

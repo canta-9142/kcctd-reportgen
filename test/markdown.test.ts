@@ -159,3 +159,26 @@ $$
   assert.match(html, /katex/);
   assert.match(html, /kdrg-math-block/);
 });
+
+test("renders explicit Markdown links without linkifying bare URLs", () => {
+  const html = renderMarkdown(`[資料](./assets/reference.pdf)
+
+https://example.com
+`, "file:///tmp/report/");
+
+  assert.match(html, /<a href="file:\/\/\/tmp\/report\/assets\/reference\.pdf">資料<\/a>/);
+  assert.doesNotMatch(html, /<a href="https:\/\/example\.com">/);
+});
+
+test("adds stable heading ids for page-local links", () => {
+  const html = renderMarkdown(`# 1. 目的
+
+[目的へ](#目的)
+
+# 2. 目的
+`);
+
+  assert.match(html, /<h1 id="目的">1\. 目的<\/h1>/);
+  assert.match(html, /<a href="#%E7%9B%AE%E7%9A%84">目的へ<\/a>/);
+  assert.match(html, /<h1 id="目的-2">2\. 目的<\/h1>/);
+});

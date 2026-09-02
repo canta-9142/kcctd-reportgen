@@ -75,12 +75,30 @@ export function prepareMarkdown(source: string): PrepareMarkdownResult {
   };
 }
 
-export function renderMarkdown(markdown: string): string {
+export function renderMarkdown(markdown: string, baseUrl?: string): string {
   const md = new MarkdownIt({
     html: true,
-    linkify: true,
+    linkify: false,
     typographer: false,
   }).use(katexPlugin);
+
+  const headingIds = new Map<string, number>();
+  md.renderer.rules.heading_open = (tokens, idx, options, _env, self) => {
+    const headingText = tokens[idx + 1]?.content ?? "";
+    const baseId = createHeadingId(headingText);
+    const occurrence = (headingIds.get(baseId) ?? 0) + 1;
+    headingIds.set(baseId, occurrence);
+    tokens[idx].attrSet("id", occurrence === 1 ? baseId : `${baseId}-${occurrence}`);
+    return self.renderToken(tokens, idx, options);
+  };
+
+  md.renderer.rules.link_open = (tokens, idx, options, _env, self) => {
+    const href = tokens[idx].attrGet("href");
+    if (baseUrl && href && !href.startsWith("#")) {
+      tokens[idx].attrSet("href", new URL(href, baseUrl).href);
+    }
+    return self.renderToken(tokens, idx, options);
+  };
 
   const defaultFence = md.renderer.rules.fence;
   md.renderer.rules.fence = (tokens, idx, options, env, self) => {
@@ -93,6 +111,18 @@ export function renderMarkdown(markdown: string): string {
   };
 
   return md.render(markdown);
+}
+
+function createHeadingId(text: string): string {
+  const id = stripHeadingNumber(text)
+    .normalize("NFKC")
+    .toLocaleLowerCase()
+    .replace(/<[^>]*>/g, "")
+    .replace(/[^\p{Letter}\p{Number}_ -]/gu, "")
+    .trim()
+    .replace(/\s+/g, "-");
+
+  return id || "section";
 }
 
 function katexPlugin(md: MarkdownIt): void {
