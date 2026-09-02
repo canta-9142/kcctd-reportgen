@@ -37,7 +37,10 @@
               PLAYWRIGHT_BROWSERS_PATH = "${playwrightBrowsers}";
               PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
               FONTCONFIG_FILE = pkgs.makeFontsConf {
-                fontDirectories = [ pkgs.noto-fonts-cjk-sans ];
+                # Chromium's PDF renderer can select the Thin instance from the
+                # variable CJK font and then synthesize bold, which makes dense
+                # glyphs look uneven. Use the static weight files instead.
+                fontDirectories = [ pkgs.noto-fonts-cjk-sans-static ];
               };
             };
           };
