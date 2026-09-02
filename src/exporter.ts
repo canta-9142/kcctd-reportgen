@@ -184,7 +184,7 @@ function buildCoverHtml(report: Report): string {
     <table class="cover-fields">
       <tbody>
         ${coverRow("実験題目", report.title)}
-        ${coverRow("担当教員", (report.teachers ?? []).join("\\n"), "", "name-list")}
+        ${coverRow("担当教員", (report.teachers ?? []).join(", "), "", "name-list")}
         ${coverRow("実験開始日", formatDisplayDate(report.startedOn))}
         ${coverRow("実験終了日", formatDisplayDate(report.endedOn))}
         ${coverRow("提出日", formatDisplayDate(report.submittedOn))}
@@ -193,7 +193,7 @@ function buildCoverHtml(report: Report): string {
         ${coverRow("出席番号", report.studentNumber)}
         ${coverRow("実験班", report.group)}
         ${coverRow("氏名", report.name)}
-        ${coverRow("共同実験者名", (report.partners ?? []).join("\\n"), "", "name-list")}
+        ${coverRow("共同実験者名", (report.partners ?? []).join(", "), "", "name-list")}
       </tbody>
     </table>
     <div class="comment-box">
