@@ -41,6 +41,10 @@
                 # variable CJK font and then synthesize bold, which makes dense
                 # glyphs look uneven. Use the static weight files instead.
                 fontDirectories = [ pkgs.noto-fonts-cjk-sans-static ];
+                # Keep fonts installed by the host or the user from overriding
+                # the static files above (notably a variable Noto CJK build).
+                impureFontDirectories = [ ];
+                includes = [ ];
               };
             };
           };

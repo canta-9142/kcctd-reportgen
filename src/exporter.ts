@@ -426,7 +426,7 @@ function baseStyles(): string {
   return `
     :root {
       --font-body: "Yu Mincho", "YuMincho", "Hiragino Mincho ProN", "MS Mincho", serif;
-      --font-heading: "Noto Sans JP", "Yu Gothic", "YuGothic", "Meiryo", sans-serif;
+      --font-heading: "Noto Sans CJK JP", "Noto Sans JP", "Yu Gothic", "YuGothic", "Meiryo", sans-serif;
       --font-code: "Cascadia Code", "Cascadia Mono", Consolas, "Courier New", monospace;
     }
     * { box-sizing: border-box; }
