@@ -268,25 +268,78 @@ function buildBodyHtml(content: string): string {
       border-bottom: 1px solid #333;
       text-align: left;
     }
-    pre {
-      border: 1px solid #444;
-      padding: 0.8em;
-      white-space: pre-wrap;
+    .kdrg-code-block {
+      margin: 0.8em 0 1.2em;
+      border: 1px solid #3c3c3c;
+      background: #1e1e1e;
+      color: #d4d4d4;
       break-inside: avoid;
+    }
+    .kdrg-code-header {
+      min-height: 2.1em;
+      padding: 0.45em 0.9em 0.4em;
+      border-bottom: 1px solid #3c3c3c;
+      background: #252526;
+      color: #cccccc;
+      font-family: var(--font-code);
+      font-size: 8pt;
+      line-height: 1.25;
+      text-transform: lowercase;
+    }
+    .kdrg-code-block pre {
+      display: flex;
+      margin: 0;
+      padding: 0.8em 0;
+      white-space: pre-wrap;
       font-family: var(--font-code);
       font-variant-ligatures: common-ligatures contextual;
       font-feature-settings: "liga" 1, "calt" 1;
       font-size: 9pt;
       line-height: 1.45;
     }
+    .kdrg-line-numbers {
+      flex: 0 0 auto;
+      min-width: 3.5em;
+      padding: 0 0.9em;
+      border-right: 1px solid #3c3c3c;
+      color: #858585;
+      text-align: right;
+      user-select: none;
+    }
     code {
       font-family: var(--font-code);
       font-size: 0.95em;
     }
-    pre code {
+    .kdrg-code-block pre code {
+      display: block;
+      flex: 1 1 auto;
+      min-width: 0;
+      padding: 0 1em;
+      color: #d4d4d4;
+      overflow-wrap: anywhere;
       font-variant-ligatures: inherit;
       font-feature-settings: inherit;
     }
+    .hljs-comment,
+    .hljs-quote { color: #6a9955; }
+    .hljs-keyword,
+    .hljs-selector-tag,
+    .hljs-literal { color: #569cd6; }
+    .hljs-string,
+    .hljs-regexp,
+    .hljs-attribute { color: #ce9178; }
+    .hljs-number { color: #b5cea8; }
+    .hljs-title,
+    .hljs-section { color: #dcdcaa; }
+    .hljs-type,
+    .hljs-built_in { color: #4ec9b0; }
+    .hljs-variable,
+    .hljs-template-variable,
+    .hljs-params,
+    .hljs-property { color: #9cdcfe; }
+    .hljs-meta,
+    .hljs-symbol,
+    .hljs-bullet { color: #c586c0; }
     figure {
       margin: 1.1em auto 1.4em;
       text-align: center;

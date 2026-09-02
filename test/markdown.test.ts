@@ -182,3 +182,27 @@ test("adds stable heading ids for page-local links", () => {
   assert.match(html, /<a href="#%E7%9B%AE%E7%9A%84">目的へ<\/a>/);
   assert.match(html, /<h1 id="目的-2">2\. 目的<\/h1>/);
 });
+
+test("renders fenced code with VS Code-style highlighting and line numbers", () => {
+  const html = renderMarkdown(`\`\`\`typescript
+const message: string = "Hello";
+console.log(message);
+\`\`\`
+`);
+
+  assert.match(html, /class="kdrg-code-block"/);
+  assert.match(html, /class="kdrg-code-header"><span>typescript<\/span>/);
+  assert.match(html, /class="kdrg-line-numbers"[^>]*>1\n2<\/span>/);
+  assert.match(html, /class="hljs language-typescript"/);
+  assert.match(html, /hljs-keyword/);
+  assert.match(html, /hljs-string/);
+});
+
+test("escapes code when the fence language is unknown", () => {
+  const html = renderMarkdown(`\`\`\`custom-language
+<unsafe>& value
+\`\`\`
+`);
+
+  assert.match(html, /&lt;unsafe&gt;&amp; value/);
+});

@@ -1,4 +1,5 @@
 import MarkdownIt from "markdown-it";
+import hljs from "highlight.js/lib/common";
 import katex from "katex";
 import { stripReportBlock } from "./files.js";
 import { parsePlotBlock, renderPlot, type RefEntry, type RefKind } from "./plot.js";
@@ -100,14 +101,25 @@ export function renderMarkdown(markdown: string, baseUrl?: string): string {
     return self.renderToken(tokens, idx, options);
   };
 
-  const defaultFence = md.renderer.rules.fence;
-  md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+  md.renderer.rules.fence = (tokens, idx) => {
     const token = tokens[idx];
     const info = token.info.trim();
     if (info === "mermaid") {
       return `<div class="mermaid">${escapeHtml(token.content)}</div>`;
     }
-    return defaultFence ? defaultFence(tokens, idx, options, env, self) : self.renderToken(tokens, idx, options);
+
+    const language = info.split(/\s+/, 1)[0] || "text";
+    const highlighted = hljs.getLanguage(language)
+      ? hljs.highlight(token.content, { language, ignoreIllegals: true }).value
+      : escapeHtml(token.content);
+    const lineCount = Math.max(1, token.content.replace(/\n$/, "").split("\n").length);
+    const lineNumbers = Array.from({ length: lineCount }, (_, index) => index + 1).join("\n");
+    const safeLanguage = escapeHtml(language);
+
+    return `<div class="kdrg-code-block">
+  <div class="kdrg-code-header"><span>${safeLanguage}</span></div>
+  <pre><span class="kdrg-line-numbers" aria-hidden="true">${lineNumbers}</span><code class="hljs language-${safeLanguage}">${highlighted}</code></pre>
+</div>`;
   };
 
   return md.render(markdown);
