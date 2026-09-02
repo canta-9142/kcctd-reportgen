@@ -306,6 +306,9 @@ function buildBodyHtml(content: string): string {
       text-align: right;
       user-select: none;
     }
+    .kdrg-code-block:has(code .source-line) > pre > .kdrg-line-numbers {
+      display: none;
+    }
     code {
       font-family: var(--font-code);
       font-size: 0.95em;
