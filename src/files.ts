@@ -111,21 +111,16 @@ export function formatDisplayDate(value: string): string {
   return `${Number(match[1])}年${Number(match[2])}月${Number(match[3])}日`;
 }
 
-export function resolveResubmittedOn(
-  indexReport: Partial<Report> | undefined,
-  jsonReport: Partial<Report>,
-): string {
-  const indexValue = normalizeOptionalDateValue(indexReport?.resubmittedOn, "index.md");
-  const jsonValue = normalizeOptionalDateValue(jsonReport.resubmittedOn, "report.json");
-  const resolved = indexValue || jsonValue;
+export function validateResubmittedOn(value: unknown): string {
+  const normalized = normalizeOptionalDateValue(value, "index.md");
 
-  if (resolved && !isValidIsoDate(resolved)) {
+  if (normalized && !isValidIsoDate(normalized)) {
     throw new Error(
-      `Invalid resubmittedOn "${resolved}". Use YYYY-MM-DD in index.md or report.json.`,
+      `Invalid resubmittedOn "${normalized}". Use YYYY-MM-DD in index.md.`,
     );
   }
 
-  return resolved;
+  return normalized;
 }
 
 export function createReportFolderName(startedOn: string, themeId: string): string {

@@ -2,7 +2,7 @@
 
 KDRG (`kdrg`) は、神戸高専電子工学科の実験報告書を Markdown から PDF に生成する CLI ツールです。
 
-表紙情報は `report.json` に保存し、本文は `index.md` に書きます。`kdrg export` を実行すると、表紙つきの PDF が `output/` に出力されます。
+表紙情報は `index.md` 先頭のコメントに、本文は同じ `index.md` に書きます。`kdrg export` を実行すると、表紙つきの PDF が `output/` に出力されます。
 
 ## 主な機能
 
@@ -54,7 +54,6 @@ kdrg init
 対話形式でレポート情報を入力すると、以下のファイルが生成されます。
 
 ```text
-reports/<実験開始年>-<実験開始月>-<テーマ番号>/report.json
 reports/<実験開始年>-<実験開始月>-<テーマ番号>/index.md
 ```
 
@@ -83,7 +82,6 @@ project-root/
   kdrg.config.json
   reports/
     2026-06-T1A1/
-      report.json
       index.md
       output/
         2026_T1A1_山田太郎.pdf
@@ -121,30 +119,23 @@ body.html
 compiled.md
 ```
 
-```sh
-kdrg export 2026-06-T1A1 --no-index-sync
-```
+`index.md` 先頭のメタデータコメント内で `submittedOn` が空欄の場合、`export` 実行日で自動入力されます。
 
-デフォルトでは、`export` 時に `report.json` の内容を `index.md` 先頭の自動生成メタデータブロックへ同期します。
+再提出日は同じコメント内の `resubmittedOn` に入力します。値は実在する日付を `YYYY-MM-DD` 形式で記述する必要があり、形式が不正な場合は `export` がエラーになります。
 
-`--no-index-sync` を指定すると、この同期を行いません。
+日付はコメント内では `YYYY-MM-DD` 形式で保存し、PDF 表紙では `2026年6月5日` の形式で表示します。
 
-`report.json` の `submittedOn` が空欄の場合、`export` 実行日で自動入力されます。
+## 表紙情報
 
-再提出日は `report.json` または `index.md` 先頭の自動生成メタデータブロックに、`resubmittedOn` として入力できます。片方だけに値がある場合は両方へ同期し、両方に値がある場合は `index.md` の値を優先します。値は実在する日付を `YYYY-MM-DD` 形式で記述する必要があり、形式が不正な場合は `export` がエラーになります。
+`index.md` の先頭にあるコメントには、表紙に出力する情報を保存します。
 
-日付は `report.json` では `YYYY-MM-DD` 形式で保存し、PDF 表紙では `2026年6月5日` の形式で表示します。
-
-## `report.json`
-
-`report.json` には、表紙に出力する情報を保存します。
-
-```json
+```md
+<!-- kdrg-report:start
 {
   "year": 2026,
   "themeId": "T1A1",
   "title": "I-V特性の測定",
-  "teacher": "高専先生",
+  "teachers": ["高専先生", "神戸先生"],
   "startedOn": "2026-05-20",
   "endedOn": "2026-05-20",
   "submittedOn": "",
@@ -156,6 +147,7 @@ kdrg export 2026-06-T1A1 --no-index-sync
   "partners": ["佐藤花子"],
   "comments": ""
 }
+kdrg-report:end -->
 ```
 
 `grade`、`studentNumber`、`name` は `kdrg config` の内容を初期値として使います。

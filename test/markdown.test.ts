@@ -6,8 +6,8 @@ import {
   createReportFolderName,
   extractReportBlock,
   formatDisplayDate,
-  resolveResubmittedOn,
   syncReportBlock,
+  validateResubmittedOn,
 } from "../src/files.js";
 
 test("numbers headings and keeps references unnumbered", () => {
@@ -33,7 +33,7 @@ test("formats report dates with Japanese year, month, and day markers", () => {
   assert.equal(formatDisplayDate(""), "");
 });
 
-test("prefers index.md resubmission date and synchronizes the report block", () => {
+test("reads the resubmission date from index.md and synchronizes the report block", () => {
   const source = `<!-- kdrg-report:start
 {
   "resubmittedOn": "2026-06-12"
@@ -43,27 +43,20 @@ kdrg-report:end -->
 # 目的
 `;
   const indexReport = extractReportBlock(source);
-  const resolved = resolveResubmittedOn(indexReport, { resubmittedOn: "2026-06-11" });
+  const resolved = validateResubmittedOn(indexReport?.resubmittedOn);
   const synced = syncReportBlock(source, { ...indexReport, resubmittedOn: resolved });
 
   assert.equal(resolved, "2026-06-12");
   assert.match(synced, /"resubmittedOn": "2026-06-12"/);
 });
 
-test("uses report.json resubmission date when index.md is empty", () => {
-  assert.equal(
-    resolveResubmittedOn({ resubmittedOn: "" }, { resubmittedOn: "2026-06-11" }),
-    "2026-06-11",
-  );
-});
-
-test("rejects an invalid resubmission date during export reconciliation", () => {
+test("rejects an invalid resubmission date in index.md", () => {
   assert.throws(
-    () => resolveResubmittedOn({ resubmittedOn: "2026/06/12" }, {}),
+    () => validateResubmittedOn("2026/06/12"),
     /Use YYYY-MM-DD/,
   );
   assert.throws(
-    () => resolveResubmittedOn(undefined, { resubmittedOn: "2026-02-30" }),
+    () => validateResubmittedOn("2026-02-30"),
     /Use YYYY-MM-DD/,
   );
 });

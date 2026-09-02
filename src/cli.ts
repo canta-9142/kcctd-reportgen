@@ -11,10 +11,10 @@ import {
   findProjectRoot,
   formatDate,
   readJsonIfExists,
-  resolveResubmittedOn,
   resolveReportDir,
   sanitizeFilePart,
   syncReportBlock,
+  validateResubmittedOn,
 } from "./files.js";
 
 const CONFIG_FILE = "kdrg.config.json";
@@ -29,7 +29,7 @@ export type Report = {
   year: number;
   themeId: string;
   title: string;
-  teacher: string;
+  teachers: string[];
   startedOn: string;
   endedOn: string;
   submittedOn: string;
@@ -45,7 +45,6 @@ export type Report = {
 type CliOptions = {
   force: boolean;
   keepHtml: boolean;
-  indexSync: boolean;
 };
 
 export async function main(args: string[]): Promise<void> {
@@ -104,7 +103,7 @@ async function runInit(args: string[]): Promise<void> {
     const now = new Date();
     const themeId = await askRequired(rl, "テーマ番号 (例: T1A1)");
     const title = await ask(rl, "実験題目", "");
-    const teacher = await ask(rl, "担当教員", "");
+    const teachersText = await ask(rl, "担当教員名 (カンマ区切り)", "");
     const startedOn = await askExperimentStartDate(rl, formatDate(now));
     const endedOn = await ask(rl, "実験終了日 (YYYY-MM-DD)", startedOn);
     const group = await ask(rl, "実験班", "");
@@ -117,7 +116,7 @@ async function runInit(args: string[]): Promise<void> {
       year,
       themeId,
       title,
-      teacher,
+      teachers: splitList(teachersText),
       startedOn,
       endedOn,
       submittedOn: "",
@@ -133,10 +132,8 @@ async function runInit(args: string[]): Promise<void> {
     const reportDir = path.join(projectRoot, "reports", reportFolderName);
     await ensureNewDirectory(reportDir, options.force);
 
-    const reportJsonPath = path.join(reportDir, "report.json");
     const indexPath = path.join(reportDir, "index.md");
 
-    await writeFile(reportJsonPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");
     await writeFile(indexPath, `${createReportBlock(report)}\n${createInitialMarkdown()}`, "utf8");
 
     console.log(`Created ${path.relative(projectRoot, reportDir)}`);
@@ -153,28 +150,19 @@ async function runExport(args: string[]): Promise<void> {
 
   const options = parseOptions(args.slice(1));
   const projectRoot = await findProjectRoot(process.cwd());
-  const config = ((await readJsonIfExists(path.join(projectRoot, CONFIG_FILE))) ?? {}) as UserConfig;
   const reportDir = await resolveReportDir(projectRoot, folderArg);
 
-  const reportJsonPath = path.join(reportDir, "report.json");
   const indexPath = path.join(reportDir, "index.md");
-  const report = (await readJsonIfExists(reportJsonPath)) as Partial<Report> | undefined;
-  if (!report) {
-    throw new Error(`report.json not found: ${reportJsonPath}`);
-  }
   const indexSource = await readFile(indexPath, "utf8");
-  const indexReport = extractReportBlock(indexSource);
-  const resubmittedOn = resolveResubmittedOn(indexReport, report);
+  const report = extractReportBlock(indexSource);
+  if (!report) {
+    throw new Error(`kdrg report block not found in index.md: ${indexPath}`);
+  }
+  const resubmittedOn = validateResubmittedOn(report.resubmittedOn);
 
   const today = formatDate(new Date());
-  const updatedReport = normalizeReport(report, config, today, resubmittedOn);
-  await writeFile(reportJsonPath, `${JSON.stringify(updatedReport, null, 2)}\n`, "utf8");
-
-  const indexReportToWrite =
-    options.indexSync !== false
-      ? updatedReport
-      : { ...(indexReport ?? updatedReport), resubmittedOn };
-  await writeFile(indexPath, syncReportBlock(indexSource, indexReportToWrite), "utf8");
+  const updatedReport = normalizeReport(report, today, resubmittedOn);
+  await writeFile(indexPath, syncReportBlock(indexSource, updatedReport), "utf8");
 
   const outputDir = path.join(reportDir, "output");
   await mkdir(outputDir, { recursive: true });
@@ -197,7 +185,6 @@ async function runExport(args: string[]): Promise<void> {
 
 function normalizeReport(
   report: Partial<Report>,
-  config: UserConfig,
   today: string,
   resubmittedOn: string,
 ): Report {
@@ -205,15 +192,15 @@ function normalizeReport(
     year: report.year ?? new Date().getFullYear(),
     themeId: report.themeId ?? "",
     title: report.title ?? "",
-    teacher: report.teacher ?? "",
+    teachers: Array.isArray(report.teachers) ? report.teachers : [],
     startedOn: report.startedOn ?? "",
     endedOn: report.endedOn ?? "",
     submittedOn: report.submittedOn || today,
     resubmittedOn,
-    grade: report.grade || config.grade || "",
-    studentNumber: report.studentNumber || config.studentNumber || "",
+    grade: report.grade ?? "",
+    studentNumber: report.studentNumber ?? "",
     group: report.group ?? "",
-    name: report.name || config.name || "",
+    name: report.name ?? "",
     partners: Array.isArray(report.partners) ? report.partners : [],
     comments: report.comments ?? "",
   };
@@ -223,7 +210,6 @@ function parseOptions(args: string[]): CliOptions {
   const options: CliOptions = {
     force: false,
     keepHtml: false,
-    indexSync: true,
   };
 
   for (const arg of args) {
@@ -231,8 +217,6 @@ function parseOptions(args: string[]): CliOptions {
       options.force = true;
     } else if (arg === "--keep-html") {
       options.keepHtml = true;
-    } else if (arg === "--no-index-sync" || arg === "--no-overwrite-index") {
-      options.indexSync = false;
     } else {
       throw new Error(`Unknown option: ${arg}`);
     }
@@ -321,7 +305,7 @@ function printHelp(): void {
 Usage:
   kdrg config
   kdrg init [--force]
-  kdrg export <folder-name-or-absolute-path> [--keep-html] [--no-index-sync]
+  kdrg export <folder-name-or-absolute-path> [--keep-html]
 
 Examples:
   kdrg export 2026-06-T1A1
