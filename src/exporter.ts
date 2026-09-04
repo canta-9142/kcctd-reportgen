@@ -303,11 +303,11 @@ function buildBodyHtml(content: string): string {
       border-bottom: 1px solid #333;
       margin: 0.2em 0 1.2em;
       font-size: 9.5pt;
-      break-inside: avoid;
-      page-break-inside: avoid;
+      break-inside: auto;
+      page-break-inside: auto;
     }
     thead {
-      display: table-row-group;
+      display: table-header-group;
     }
     th, td {
       border: 0;
