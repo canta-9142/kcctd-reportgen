@@ -240,6 +240,9 @@ function buildBodyHtml(content: string): string {
     main > p.kdrg-math-block {
       text-indent: 0;
     }
+    .kdrg-math-inline > .katex {
+      font-size: 1em;
+    }
     li > p,
     blockquote > p {
       text-indent: 0;

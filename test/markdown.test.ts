@@ -157,6 +157,7 @@ $$
 `);
 
   assert.match(html, /katex/);
+  assert.match(html, /kdrg-math-inline/);
   assert.match(html, /kdrg-math-block/);
 });
 

@@ -144,7 +144,7 @@ function katexPlugin(md: MarkdownIt): void {
   });
 
   md.renderer.rules.kdrg_math_inline = (tokens, idx) =>
-    renderKatex(tokens[idx].content, { displayMode: false });
+    `<span class="kdrg-math-inline">${renderKatex(tokens[idx].content, { displayMode: false })}</span>`;
   md.renderer.rules.kdrg_math_block = (tokens, idx) =>
     `<p class="kdrg-math-block">${renderKatex(tokens[idx].content, { displayMode: true })}</p>\n`;
 }
