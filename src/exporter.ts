@@ -418,9 +418,13 @@ function buildBodyHtml(content: string): string {
     }
     .kdrg-table-caption {
       margin-bottom: 0.2em;
+      break-after: avoid-page;
+      page-break-after: avoid;
     }
     .kdrg-graph-caption {
       margin-top: 0.3em;
+      break-before: avoid-page;
+      page-break-before: avoid;
     }
     .kdrg-plot-svg {
       display: block;
