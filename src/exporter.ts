@@ -12,6 +12,9 @@ const require = createRequire(import.meta.url);
 
 type PdfOptions = Parameters<Page["pdf"]>[0];
 
+const CSS_PIXELS_PER_MM = 96 / 25.4;
+const BODY_PRINTABLE_HEIGHT_MM = 297 - 20 - 18;
+
 export type ExportReportOptions = {
   projectRoot: string;
   reportDir: string;
@@ -64,7 +67,7 @@ export async function exportReport({
       footerTemplate:
         '<div style="font-size:10px;width:100%;text-align:center;color:#222;"><span class="pageNumber"></span></div>',
       margin: { top: "20mm", right: "20mm", bottom: "18mm", left: "20mm" },
-    });
+    }, BODY_PRINTABLE_HEIGHT_MM);
 
     await writeFile(outputPath, await mergePdfs([coverPdf, bodyPdf]));
   } catch (error) {
@@ -79,10 +82,16 @@ export async function exportReport({
   }
 }
 
-async function renderPdfPage(browser: Browser, html: string, pdfOptions: PdfOptions): Promise<Buffer> {
+async function renderPdfPage(
+  browser: Browser,
+  html: string,
+  pdfOptions: PdfOptions,
+  printableHeightMm?: number,
+): Promise<Buffer> {
   const page = await browser.newPage();
   try {
     await page.setContent(html, { waitUntil: "load" });
+    await page.emulateMedia({ media: "print" });
     await page
       .waitForFunction(
         () => (window as unknown as { __kdrgReady?: boolean }).__kdrgReady === true,
@@ -90,7 +99,22 @@ async function renderPdfPage(browser: Browser, html: string, pdfOptions: PdfOpti
         { timeout: 10000 },
       )
       .catch(() => {});
-    await page.emulateMedia({ media: "print" });
+    await page.evaluate(() => document.fonts.ready);
+
+    if (printableHeightMm !== undefined) {
+      const tableHeights = await page.locator("main table").evaluateAll((tables) =>
+        tables.map((table) => table.getBoundingClientRect().height),
+      );
+      const printableHeightPx = printableHeightMm * CSS_PIXELS_PER_MM;
+      tableHeights.forEach((height, index) => {
+        if (height > printableHeightPx) {
+          console.warn(
+            `Warning: 表${index + 1}の高さ (${(height / CSS_PIXELS_PER_MM).toFixed(1)}mm) がページの印刷可能領域 (${printableHeightMm}mm) を超えています。`,
+          );
+        }
+      });
+    }
+
     return await page.pdf(pdfOptions);
   } finally {
     await page.close();
@@ -254,6 +278,8 @@ function buildBodyHtml(content: string): string {
       border-bottom: 1px solid #333;
       margin: 0.2em 0 1.2em;
       font-size: 9.5pt;
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
     thead {
       display: table-row-group;
@@ -261,6 +287,10 @@ function buildBodyHtml(content: string): string {
     th, td {
       border: 0;
       padding: 0.35em 0.5em;
+    }
+    tr {
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
     th + th,
     td + td {
