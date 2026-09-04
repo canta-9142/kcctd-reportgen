@@ -101,6 +101,17 @@ export function renderMarkdown(markdown: string, baseUrl?: string): string {
     return self.renderToken(tokens, idx, options);
   };
 
+  const defaultImageRenderer = md.renderer.rules.image;
+  md.renderer.rules.image = (tokens, idx, options, env, self) => {
+    const src = tokens[idx].attrGet("src");
+    if (baseUrl && src) {
+      tokens[idx].attrSet("src", new URL(src, baseUrl).href);
+    }
+    return defaultImageRenderer
+      ? defaultImageRenderer(tokens, idx, options, env, self)
+      : self.renderToken(tokens, idx, options);
+  };
+
   md.renderer.rules.fence = (tokens, idx) => {
     const token = tokens[idx];
     const info = token.info.trim();

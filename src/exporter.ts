@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { chromium, type Browser, type Page } from "playwright";
 import { PDFDocument } from "pdf-lib";
 import { prepareMarkdown, renderMarkdown } from "./markdown.js";
@@ -32,10 +32,11 @@ export async function exportReport({
 }: ExportReportOptions): Promise<void> {
   const source = await readFile(indexPath, "utf8");
   const prepared = prepareMarkdown(source);
-  const bodyContent = renderMarkdown(
+  const renderedBodyContent = renderMarkdown(
     prepared.markdown,
     pathToFileURL(`${path.dirname(indexPath)}${path.sep}`).href,
   );
+  const bodyContent = await inlineLocalImages(renderedBodyContent);
   const coverHtml = buildCoverHtml(report);
   const bodyHtml = buildBodyHtml(bodyContent);
   const outputDir = path.dirname(outputPath);
@@ -80,6 +81,30 @@ export async function exportReport({
   } finally {
     await browser.close();
   }
+}
+
+async function inlineLocalImages(html: string): Promise<string> {
+  const sources = Array.from(html.matchAll(/<img\b[^>]*\bsrc="(file:[^"]+)"/g), (match) => match[1]);
+  let result = html;
+
+  for (const source of new Set(sources)) {
+    const imagePath = fileURLToPath(source);
+    const extension = path.extname(imagePath).toLowerCase();
+    const mimeType =
+      extension === ".svg"
+        ? "image/svg+xml"
+        : extension === ".jpg" || extension === ".jpeg"
+          ? "image/jpeg"
+          : extension === ".gif"
+            ? "image/gif"
+            : extension === ".webp"
+              ? "image/webp"
+              : "image/png";
+    const dataUrl = `data:${mimeType};base64,${(await readFile(imagePath)).toString("base64")}`;
+    result = result.replaceAll(source, dataUrl);
+  }
+
+  return result;
 }
 
 async function renderPdfPage(
@@ -377,6 +402,12 @@ function buildBodyHtml(content: string): string {
       margin: 1.1em auto 1.4em;
       text-align: center;
       break-inside: avoid;
+    }
+    main img {
+      display: block;
+      max-width: 100%;
+      height: auto;
+      margin: 0 auto;
     }
     figcaption,
     .kdrg-caption {

@@ -171,6 +171,15 @@ https://example.com
   assert.doesNotMatch(html, /<a href="https:\/\/example\.com">/);
 });
 
+test("resolves relative Markdown image paths against the report folder", () => {
+  const html = renderMarkdown(`![回路図](./assets/circuit.png)`, "file:///tmp/report/");
+
+  assert.match(
+    html,
+    /<img src="file:\/\/\/tmp\/report\/assets\/circuit\.png" alt="回路図">/,
+  );
+});
+
 test("adds stable heading ids for page-local links", () => {
   const html = renderMarkdown(`# 1. 目的
 
